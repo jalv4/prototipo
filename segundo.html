@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ubicación Dispositivo 2</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+  <h1>Ubicación Dispositivo 2</h1>
+  <p>Enviando ubicación en tiempo real...</p>
+  <p id="estado">Conectando con Firebase...</p>
+
+  <script>
+    // Configura con los datos de tu proyecto Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAGOPcLUAzMcsYIR2gOpwgUbejk-fkUW9I",
+      authDomain: "flecha-d6815.firebaseapp.com",
+      databaseURL: "https://flecha-d6815-default-rtdb.firebaseio.com/",
+      projectId: "flecha-d6815",
+      storageBucket: "flecha-d6815.firebasestorage.app",
+      messagingSenderId: "225622942170",
+      appId: "1:225622942170:web:c74b437f8e216ae60c60e3"
+    };
+
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Verifica soporte de geolocalización
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        pos => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          db.ref("objetivo").set({ lat, lon });
+          document.getElementById("estado").textContent =
+            `Ubicación enviada: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        },
+        err => {
+          document.getElementById("estado").textContent =
+            "Error de GPS: " + err.message;
+        },
+        { enableHighAccuracy: true }
+      );
+    } else {
+      document.getElementById("estado").textContent =
+        "Geolocalización no soportada";
+    }
+  </script>
+</body>
+</html>

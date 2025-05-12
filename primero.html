@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Flecha GPS con Firebase</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: sans-serif;
+      margin-top: 50px;
+    }
+    #arrow {
+      width: 100px;
+      transition: transform 0.5s ease;
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+
+  <h1>Flecha hacia el objetivo</h1>
+  <img id="arrow" src="https://cdn-icons-png.flaticon.com/512/32/32213.png" alt="Flecha" />
+  <p id="direccion">Calculando dirección...</p>
+
+  <script>
+    // Configuración de Firebase (reemplaza con tu propia configuración)
+    const firebaseConfig = {
+      apiKey: "TU_API_KEY",
+      authDomain: "TU_PROYECTO.firebaseapp.com",
+      databaseURL: "https://TU_PROYECTO.firebaseio.com",
+      projectId: "TU_PROYECTO",
+      storageBucket: "TU_PROYECTO.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let objetivo = { lat: 0, lon: 0 };
+
+    // Escucha ubicación del dispositivo objetivo
+    db.ref("objetivo").on("value", snapshot => {
+      const data = snapshot.val();
+      if (data && data.lat && data.lon) {
+        objetivo = data;
+      }
+    });
+
+    function getBearing(lat1, lon1, lat2, lon2) {
+      const toRad = deg => deg * Math.PI / 180;
+      const toDeg = rad => rad * 180 / Math.PI;
+      const dLon = toRad(lon2 - lon1);
+      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+      const brng = Math.atan2(y, x);
+      return (toDeg(brng) + 360) % 360;
+    }
+
+    function getDirectionText(angle) {
+      if (angle > 337.5 || angle <= 22.5) return "adelante";
+      if (angle > 22.5 && angle <= 67.5) return "gira levemente a la derecha";
+      if (angle > 67.5 && angle <= 112.5) return "gira a la derecha";
+      if (angle > 112.5 && angle <= 157.5) return "gira fuerte a la derecha";
+      if (angle > 157.5 && angle <= 202.5) return "da media vuelta";
+      if (angle > 202.5 && angle <= 247.5) return "gira fuerte a la izquierda";
+      if (angle > 247.5 && angle <= 292.5) return "gira a la izquierda";
+      if (angle > 292.5 && angle <= 337.5) return "gira levemente a la izquierda";
+    }
+
+    function speak(text) {
+      const msg = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(msg);
+    }
+
+    let lastDirection = "";
+
+    navigator.geolocation.watchPosition(position => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      // Usamos deviceorientationabsolute para dirección del dispositivo
+      window.addEventListener('deviceorientationabsolute', e => {
+        const heading = e.alpha;
+        if (heading === null || objetivo.lat === 0) return;
+
+        const bearing = getBearing(lat, lon, objetivo.lat, objetivo.lon);
+        const angle = (bearing - heading + 360) % 360;
+
+        // Actualiza la flecha
+        document.getElementById('arrow').style.transform = `rotate(${angle}deg)`;
+
+        const directionText = getDirectionText(angle);
+        document.getElementById('direccion').textContent = directionText;
+
+        if (directionText !== lastDirection) {
+          speak(directionText);
+          lastDirection = directionText;
+        }
+      });
+    }, err => {
+      alert('Error de GPS: ' + err.message);
+    }, { enableHighAccuracy: true });
+  </script>
+
+</body>
+</html>
